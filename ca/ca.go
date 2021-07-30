@@ -138,7 +138,7 @@ func (ca *CA) IntermediateCA(suffix string) *CA {
 		panic(err)
 	}
 
-	caBytes, err := x509.CreateCertificate(rand.Reader, cert, ca.Cert, &caPrivKey.PublicKey, caPrivKey)
+	caBytes, err := x509.CreateCertificate(rand.Reader, cert, ca.Cert, &caPrivKey.PublicKey, ca.Key)
 	if err != nil {
 		panic(err)
 	}
