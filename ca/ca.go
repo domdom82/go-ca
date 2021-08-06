@@ -12,6 +12,12 @@ import (
 	"time"
 )
 
+const (
+	STATUS_VALID   string = "valid"
+	STATUS_EXPIRED string = "expired"
+	STATUS_REVOKED string = "revoked"
+)
+
 type CA struct {
 	company *company
 	Cert    *x509.Certificate
@@ -34,10 +40,12 @@ type ServerCert struct {
 	KeyPEM  *bytes.Buffer
 }
 
-func DumpCertPEM(prefix string, certPEM *bytes.Buffer, keyPEM *bytes.Buffer) {
+func DumpCertPEM(prefix string, status string, certPEM *bytes.Buffer, keyPEM *bytes.Buffer) {
 	fmt.Println(prefix + ".crt")
+	fmt.Println(status)
 	fmt.Println(certPEM)
 	fmt.Println(prefix + ".key")
+	fmt.Println(status)
 	fmt.Println(keyPEM)
 }
 
@@ -126,7 +134,7 @@ func (ca *CA) IntermediateCA(suffix string) *CA {
 			CommonName:    fmt.Sprintf("%s-%s", "IntermediateCA", suffix),
 		},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(1, 0, 0),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
@@ -156,7 +164,25 @@ func (ca *CA) IntermediateCA(suffix string) *CA {
 }
 
 func (ca *CA) ClientCert() *ClientCert {
+	return ca.doClientCert(false, false)
+}
+
+func (ca *CA) ExpiredClientCert() *ClientCert {
+	return ca.doClientCert(true, false)
+}
+
+func (ca *CA) RevokedClientCert() *ClientCert {
+	return ca.doClientCert(false, true)
+}
+
+func (ca *CA) doClientCert(expired bool, revoked bool) *ClientCert {
 	p := randomPerson(ca.company)
+	notBefore := time.Now()
+	notAfter := time.Now().AddDate(10, 0, 0)
+	if expired {
+		notBefore = time.Now().AddDate(-2, 0, 0)
+		notAfter = time.Now().AddDate(-1, 0, 0)
+	}
 	clientCert := &ClientCert{}
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(1658),
@@ -170,8 +196,8 @@ func (ca *CA) ClientCert() *ClientCert {
 			CommonName:    fmt.Sprintf("%s %s", p.first, p.last),
 		},
 		EmailAddresses: []string{p.email},
-		NotBefore:      time.Now(),
-		NotAfter:       time.Now().AddDate(10, 0, 0),
+		NotBefore:      notBefore,
+		NotAfter:       notAfter,
 		SubjectKeyId:   []byte{1, 2, 3, 4, 6},
 		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 		KeyUsage:       x509.KeyUsageDigitalSignature,
@@ -199,7 +225,25 @@ func (ca *CA) ClientCert() *ClientCert {
 }
 
 func (ca *CA) ServerCert() *ServerCert {
+	return ca.doServerCert(false, false)
+}
+
+func (ca *CA) ExpiredServerCert() *ServerCert {
+	return ca.doServerCert(true, false)
+}
+
+func (ca *CA) RevokedServerCert() *ServerCert {
+	return ca.doServerCert(false, true)
+}
+
+func (ca *CA) doServerCert(expired bool, revoked bool) *ServerCert {
 	hostname := fmt.Sprintf("%s.%s", randomHostname(), ca.company.domain)
+	notBefore := time.Now()
+	notAfter := time.Now().AddDate(10, 0, 0)
+	if expired {
+		notBefore = time.Now().AddDate(-2, 0, 0)
+		notAfter = time.Now().AddDate(-1, 0, 0)
+	}
 	serverCert := &ServerCert{}
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(1658),
@@ -213,8 +257,8 @@ func (ca *CA) ServerCert() *ServerCert {
 			CommonName:    hostname,
 		},
 		DNSNames:     []string{hostname},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(10, 0, 0),
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
