@@ -65,7 +65,7 @@ func keyPEM(key *rsa.PrivateKey) *bytes.Buffer {
 	return keyPEM
 }
 
-func New() *CA {
+func New(suffix string) *CA {
 
 	company := randomCompany()
 
@@ -80,7 +80,7 @@ func New() *CA {
 			Locality:      []string{company.address.city},
 			StreetAddress: []string{fmt.Sprintf("%d %s", company.address.number, company.address.street)},
 			PostalCode:    []string{fmt.Sprintf("%d", company.address.zip)},
-			CommonName:    fmt.Sprintf("%s RootCA", company.name),
+			CommonName:    fmt.Sprintf("%s RootCA-%s", company.name, suffix),
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0),
